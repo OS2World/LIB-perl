@@ -1,0 +1,450 @@
+- deleted files:
+
+os2/a2p.cs
+os2/a2p.def
+os2/alarm.c
+os2/alarm.h
+os2/crypt.c
+os2/dir.h
+os2/director.c
+os2/eg/*.pl
+os2/mktemp.c
+os2/perl.bad
+os2/perl.cs
+os2/perldb.dif
+os2/perlglob.bad
+os2/perlglob.cs
+os2/perlglob.def
+os2/popen.c
+
+- new files:
+
+os2/Makefile.a2p
+os2/README.OLD
+os2/alarm.pl
+os2/dump.cmd
+
+- replaced files (i.e. new files included in the patch, no diffs):
+
+os2/Makefile
+os2/README.OS2
+os2/config.h
+os2/glob.c
+os2/os2.c
+os2/perl.def
+
+diff -cbr orig/doio.c new/doio.c
+*** orig/doio.c	Mon Feb 08 21:37:42 1993
+--- new/doio.c	Fri Feb 26 13:29:40 1993
+***************
+*** 754,760 ****
+      if (optype == O_IOCTL)
+  	retval = ioctl(fileno(stio->ifp), func, s);
+      else
+! #ifdef DOSISH
+  	fatal("fcntl is not implemented");
+  #else
+  #ifdef HAS_FCNTL
+--- 754,760 ----
+      if (optype == O_IOCTL)
+  	retval = ioctl(fileno(stio->ifp), func, s);
+      else
+! #ifdef MSDOS
+  	fatal("fcntl is not implemented");
+  #else
+  #ifdef HAS_FCNTL
+diff -cbr orig/eval.c new/eval.c
+*** orig/eval.c	Mon Feb 08 21:37:46 1993
+--- new/eval.c	Fri Feb 26 13:40:50 1993
+***************
+*** 54,61 ****
+  #ifdef I_FCNTL
+  #include <fcntl.h>
+  #endif
+! #ifdef MSDOS
+! /* I_FCNTL *MUST* not be defined for MS-DOS and OS/2
+     but fcntl.h is required for O_BINARY */
+  #include <fcntl.h>
+  #endif
+--- 54,61 ----
+  #ifdef I_FCNTL
+  #include <fcntl.h>
+  #endif
+! #ifdef DOSISH
+! /* I_FCNTL *MUST* not be defined for MS-DOS
+     but fcntl.h is required for O_BINARY */
+  #include <fcntl.h>
+  #endif
+***************
+*** 1972,1977 ****
+--- 1972,1982 ----
+  	break;
+  #endif
+      case O_SYSTEM:
++ #ifdef OS2
++ #ifdef HAS_FORK
++ #undef HAS_FORK
++ #endif
++ #endif
+  #ifdef HAS_FORK
+  #ifdef TAINT
+  	if (arglast[2] - arglast[1] == 1) {
+***************
+*** 2247,2253 ****
+--- 2252,2262 ----
+  	taintproper("Insecure dependency in mkdir");
+  #endif
+  #ifdef HAS_MKDIR
++ #if defined(MSDOS) || defined(atarist) /* but not OS2 */
++ 	value = (double)(mkdir(tmps) >= 0);
++ #else
+  	value = (double)(mkdir(tmps,anum) >= 0);
++ #endif
+  	goto donumset;
+  #else
+  	(void)strcpy(buf,"mkdir ");
+diff -cbr orig/os2/suffix.c new/os2/suffix.c
+*** orig/os2/suffix.c	Mon Feb 08 21:36:28 1993
+--- new/os2/suffix.c	Sun Oct 04 22:03:04 1992
+***************
+*** 130,136 ****
+  char *s;
+  {
+      HFILE hf;
+!     USHORT usAction;
+  
+      switch(DosOpen(s, &hf, &usAction, 0L, 0, FILE_OPEN,
+  	OPEN_ACCESS_READONLY | OPEN_SHARE_DENYNONE, 0L)) {
+--- 130,136 ----
+  char *s;
+  {
+      HFILE hf;
+!     UINT usAction;
+  
+      switch(DosOpen(s, &hf, &usAction, 0L, 0, FILE_OPEN,
+  	OPEN_ACCESS_READONLY | OPEN_SHARE_DENYNONE, 0L)) {
+diff -cbr orig/perl.c new/perl.c
+*** orig/perl.c	Mon Feb 08 21:35:20 1993
+--- new/perl.c	Fri Feb 26 13:29:52 1993
+***************
+*** 61,66 ****
+--- 61,70 ----
+  #include "perly.h"
+  #include "patchlevel.h"
+  
++ #ifdef OS2
++ #include <fcntl.h>
++ #endif
++ 
+  char *getenv();
+  
+  #ifdef IAMSUID
+***************
+*** 85,93 ****
+  static int nrslen = 1;
+  
+  main(argc,argv,env)
+! register int argc;
+! register char **argv;
+! register char **env;
+  {
+      register STR *str;
+      register char *s;
+--- 89,97 ----
+  static int nrslen = 1;
+  
+  main(argc,argv,env)
+! int argc;
+! char **argv;
+! char **env;
+  {
+      register STR *str;
+      register char *s;
+***************
+*** 106,111 ****
+--- 110,119 ----
+  #endif
+  #endif
+  
++ #ifdef OS2
++     os2init(&argc, &argv);
++ #endif
++ 
+      origargv = argv;
+      origargc = argc;
+      origenviron = environ;
+***************
+*** 281,287 ****
+      /* open script */
+  
+      if (scriptname == Nullch)
+! #ifdef MSDOS
+      {
+  	if ( isatty(fileno(stdin)) )
+  	  moreswitches("v");
+--- 289,295 ----
+      /* open script */
+  
+      if (scriptname == Nullch)
+! #ifdef DOSISH
+      {
+  	if ( isatty(fileno(stdin)) )
+  	  moreswitches("v");
+***************
+*** 290,296 ****
+  #else
+  	scriptname = "-";
+  #endif
+!     if (dosearch && !index(scriptname, '/') && (s = getenv("PATH"))) {
+  	char *xfound = Nullch, *xfailed = Nullch;
+  	int len;
+  
+--- 298,308 ----
+  #else
+  	scriptname = "-";
+  #endif
+!     if (dosearch && !index(scriptname, '/')
+! #ifdef DOSISH
+! 	&& !index(scriptname, '\\') && access(scriptname, 0)
+! #endif
+! 	&& (s = getenv("PATH"))) {
+  	char *xfound = Nullch, *xfailed = Nullch;
+  	int len;
+  
+***************
+*** 312,323 ****
+  #ifndef DOSISH
+  	    if (len && tokenbuf[len-1] != '/')
+  #else
+- #ifdef atarist
+  	    if (len && ((tokenbuf[len-1] != '\\') && (tokenbuf[len-1] != '/')))
+- #else
+- 	    if (len && tokenbuf[len-1] != '\\')
+  #endif
+- #endif
+  		(void)strcat(tokenbuf+len,"/");
+  	    (void)strcat(tokenbuf+len,scriptname);
+  #ifdef DEBUGGING
+--- 324,331 ----
+***************
+*** 357,363 ****
+  	    sprintf(tokenbuf, "%s", cpp);
+  	str_cat(str,"-I");
+  	str_cat(str,PRIVLIB);
+! #ifdef MSDOS
+  	(void)sprintf(buf, "\
+  sed %s -e \"/^[^#]/b\" \
+   -e \"/^#[ 	]*include[ 	]/b\" \
+--- 365,371 ----
+  	    sprintf(tokenbuf, "%s", cpp);
+  	str_cat(str,"-I");
+  	str_cat(str,PRIVLIB);
+! #ifdef DOSISH
+  	(void)sprintf(buf, "\
+  sed %s -e \"/^[^#]/b\" \
+   -e \"/^#[ 	]*include[ 	]/b\" \
+***************
+*** 505,511 ****
+  	    if (tmpstatbuf.st_dev != statbuf.st_dev ||
+  		tmpstatbuf.st_ino != statbuf.st_ino) {
+  		(void)fclose(rsfp);
+! 		if (rsfp = mypopen("/bin/mail root","w")) {	/* heh, heh */
+  		    fprintf(rsfp,
+  "User %d tried to run dev %d ino %d in place of dev %d ino %d!\n\
+  (Filename of set-id script was %s, uid %d gid %d.)\n\nSincerely,\nperl\n",
+--- 513,519 ----
+  	    if (tmpstatbuf.st_dev != statbuf.st_dev ||
+  		tmpstatbuf.st_ino != statbuf.st_ino) {
+  		(void)fclose(rsfp);
+! 		if (rsfp = mypopen("mail root","w")) {	/* heh, heh */
+  		    fprintf(rsfp,
+  "User %d tried to run dev %d ino %d in place of dev %d ino %d!\n\
+  (Filename of set-id script was %s, uid %d gid %d.)\n\nSincerely,\nperl\n",
+***************
+*** 1380,1397 ****
+  #ifdef MSDOS
+  	fputs("MS-DOS port Copyright (c) 1989, 1990, Diomidis Spinellis\n",
+  	stdout);
+  #ifdef OS2
+!         fputs("OS/2 port Copyright (c) 1990, 1991, Raymond Chen, Kai Uwe Rommel\n",
+          stdout);
+  #endif
+- #endif
+  #ifdef atarist
+          fputs("atariST series port, ++jrb  bammi@cadence.com\n", stdout);
+  #endif
+  	fputs("\n\
+  Perl may be copied only under the terms of either the Artistic License or the\n\
+  GNU General Public License, which may be found in the Perl 4.0 source kit.\n",stdout);
+! #ifdef MSDOS
+          usage(origargv[0]);
+  #endif
+  	exit(0);
+--- 1388,1405 ----
+  #ifdef MSDOS
+  	fputs("MS-DOS port Copyright (c) 1989, 1990, Diomidis Spinellis\n",
+  	stdout);
++ #endif
+  #ifdef OS2
+!         fputs("OS/2 port Copyright (c) 1990-1992, Raymond Chen, Kai Uwe Rommel\n",
+          stdout);
+  #endif
+  #ifdef atarist
+          fputs("atariST series port, ++jrb  bammi@cadence.com\n", stdout);
+  #endif
+  	fputs("\n\
+  Perl may be copied only under the terms of either the Artistic License or the\n\
+  GNU General Public License, which may be found in the Perl 4.0 source kit.\n",stdout);
+! #ifdef DOSISH
+          usage(origargv[0]);
+  #endif
+  	exit(0);
+***************
+*** 1430,1435 ****
+--- 1438,1450 ----
+  	fprintf(stderr, "unexec of %s into %s failed!\n", perlpath, dumpname);
+      exit(status);
+  #else
++ #ifdef OS2
++     int file = open("perldump", O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, 0666);
++     _core(file);
++     close(file);
++     fprintf(stderr, "Core dumped to file \"perldump\".\n");
++     exit(0);
++ #else
+  #ifdef DOSISH
+      abort();	/* nothing else to do */
+  #else /* ! MSDOS */
+***************
+*** 1442,1446 ****
+--- 1457,1462 ----
+      kill(getpid(),SIGABRT);	/* for use with undump */
+  #endif /* ! MSDOS */
+  #endif
++ #endif
+  }
+  
+diff -cbr orig/perl.h new/perl.h
+*** orig/perl.h	Mon Feb 08 21:36:00 1993
+--- new/perl.h	Fri Feb 26 13:29:54 1993
+***************
+*** 63,69 ****
+  #endif
+  
+  /* define this once if either system, instead of cluttering up the src */
+! #if defined(MSDOS) || defined(atarist)
+  #define DOSISH 1
+  #endif
+  
+--- 63,69 ----
+  #endif
+  
+  /* define this once if either system, instead of cluttering up the src */
+! #if defined(MSDOS) || defined(atarist) || defined(OS2)
+  #define DOSISH 1
+  #endif
+  
+***************
+*** 268,274 ****
+  #endif
+  
+  #include <errno.h>
+! #ifndef MSDOS
+  #ifndef errno
+  extern int errno;     /* ANSI allows errno to be an lvalue expr */
+  #endif
+--- 268,274 ----
+  #endif
+  
+  #include <errno.h>
+! #ifndef DOSISH
+  #ifndef errno
+  extern int errno;     /* ANSI allows errno to be an lvalue expr */
+  #endif
+***************
+*** 278,285 ****
+--- 278,287 ----
+  #ifdef HAS_STRERROR
+  char *strerror();
+  #else
++ #ifndef __EMX__
+  extern int sys_nerr;
+  extern char *sys_errlist[];
++ #endif
+  #define strerror(e) ((e) < 0 || (e) >= sys_nerr ? "(unknown)" : sys_errlist[e])
+  #endif
+  #endif
+diff -cbr orig/str.c new/str.c
+*** orig/str.c	Mon Feb 08 21:35:28 1993
+--- new/str.c	Fri Feb 26 13:29:54 1993
+***************
+*** 101,107 ****
+  char *
+  str_grow(str,newlen)
+  register STR *str;
+! #ifndef DOSISH
+  register int newlen;
+  #else
+  unsigned long newlen;
+--- 101,107 ----
+  char *
+  str_grow(str,newlen)
+  register STR *str;
+! #ifndef MSDOS
+  register int newlen;
+  #else
+  unsigned long newlen;
+diff -cbr orig/util.c new/util.c
+*** orig/util.c	Mon Feb 08 21:35:26 1993
+--- new/util.c	Fri Feb 26 13:29:56 1993
+***************
+*** 1133,1139 ****
+      else
+  	Safefree(environ[i]);
+      New(904, environ[i], strlen(nam) + strlen(val) + 2, char);
+! #ifndef MSDOS
+      (void)sprintf(environ[i],"%s=%s",nam,val);/* all that work just for this */
+  #else
+      /* MS-DOS requires environment variable names to be in uppercase */
+--- 1133,1139 ----
+      else
+  	Safefree(environ[i]);
+      New(904, environ[i], strlen(nam) + strlen(val) + 2, char);
+! #ifndef DOSISH
+      (void)sprintf(environ[i],"%s=%s",nam,val);/* all that work just for this */
+  #else
+      /* MS-DOS requires environment variable names to be in uppercase */
+***************
+*** 1487,1493 ****
+      return fdopen(p[this], mode);
+  }
+  #else
+! #ifdef atarist
+  FILE *popen();
+  FILE *
+  mypopen(cmd,mode)
+--- 1487,1493 ----
+      return fdopen(p[this], mode);
+  }
+  #else
+! #if defined(atarist) || defined(__EMX__)
+  FILE *popen();
+  FILE *
+  mypopen(cmd,mode)
+***************
+*** 1645,1651 ****
+      return;
+  }
+  
+! #ifdef atarist
+  int pclose();
+  int
+  mypclose(ptr)
+--- 1645,1651 ----
+      return;
+  }
+  
+! #if defined(atarist) || defined(__EMX__)
+  int pclose();
+  int
+  mypclose(ptr)

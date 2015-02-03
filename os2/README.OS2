@@ -1,0 +1,256 @@
+		   Notes on the OS/2 Perl port
+
+                          Kai Uwe Rommel
+                   (rommel@jonas.ucrc.sub.org)
+
+I picked up the OS/2 port from Raymond Chen at 3.0 with patches 19-28.
+When compiling, I found out that os2.c and director.c were missing. I
+had to rewrite them because even the original author of the port
+(Raymond Chen) did no longer have them.
+
+I had directory routines laying around, this was no big deal.
+I rewrote os2.c, but did not implement the syscall() as described above.
+I had not the time and did not really need it. Feel free ...
+
+Changes to above described port:
+
+- the small program GLOB is now named PERLGLOB for better ordering in
+  my /bin directory
+
+- added help page (well, a graphical user interface would be overkill
+  but a simple help page should be in every program :-)
+
+- several cosmetic changes in standard distribution files because of
+  naming conventions etc., #ifdef'd OS2
+
+- syscall() not supported as noted above
+
+- chdir now recognizes also drive letters and changes also the drive
+
+- new mypopen(), mypclose() functions and simulation routines for DOS mode,
+  they are selected automatically in real mode
+- the new pclose() does not kill the child, my experience is that this is
+  not needed.
+
+- setpriority is now:   setpriority(class, pid, val)
+  see description of DosSetPrty() for class and val meanings
+- getpriority is now:   getpriority(dummy, pid)
+  see description of DosGetPrty()
+
+- kill is now:          kill(pid, sig)
+  where sig can be 0 (kill process)
+                   1-3 (send process flags A-C, see DosFlagProcess())
+  if pid is less than zero, the signal is sent to the whole
+  process tree originating at -pid.
+
+The following files are now new with patch >=29:
+
+readme.os2        this file
+
+dir.h             sys/dir.h
+director.c        directory routines
+os2.c             kernel of OS/2 port (see below)
+popen.c           new popen.c
+mktemp.c          enhanced mktemp(), uses TMP env. variable, used by popen.c
+alarm.c           PD implementation for alarm()
+alarm.h		  header for alarm.c
+
+perl.cs           Compiler Shell script for perl itself
+perl.def          linker definition file for perl
+perl.bad          names of protect-only API calls for BIND
+perlglob.cs       Compiler Shell script for perl globbing program
+perlglob.def      linker definition file for perlglob
+a2p.cs            Compiler Shell script for a2p (see below)
+a2p.def           linker definition file for a2p
+makefile          Makefile, not tested
+
+perlsh.cmd        the converted perlsh
+perldb.dif        changes required for perldb.pl (change for your needs)
+selfrun.cmd       sample selfrunning perl script for OS/2
+selfrun.bat       sample selfrunning perl script for DOS mode
+
+Note: I don't use make but my own utility, the Compiler Shell CS.
+It was posted in comp.binaries.os2 or you can ask me for the newest
+version. The .CS files are the "makefiles" for it.
+
+Note: MS C 6.00 is required. C 5.1 is not capable of compiling perl,
+especially not with -DDEBUGGING
+
+                                August 1990
+
+                                Kai Uwe Rommel
+                                rommel@lan.informatik.tu-muenchen.dbp.de
+                                Zennerstr. 1
+                                D-8000 Muenchen 70
+
+
++ I have verified with patchlevel 37, that the OS/2 port compiles,
+  after doing two minor changes. HPFS filenames support was also added.
+  Some bugs were fixed.
++ To compile,
+  - you need the bison parser generator
+  - copy config.h from os2 into the main perl directory (important !)
+  - copy perl.cs and perlglob.cs from the os2 subdir to the main dir
+  - copy a2p.cs from os2 to x2p
+  - say "bison -d perl.y"
+      "ren perl_tab.c perl.c" and
+      "ren perl_tab.h perly.h"	in the main directory
+  - say "cs perl" and
+      "cs perlglob" in the main directory
+  - say "cs a2p" in the x2p subdir
++ If you don't have CS or don't want to use it, you have to
+  construct a makefile ...
++ If you have GNU gdbm, you can define NDBM in config.h and link with a
+  large model library of gdbm.
++ I am not sure if I can verify the OS/2 port with each release
+  from Larry Wall. Therefore, in future releases there may be
+  changes required to compile perl for OS/2.
+ 				October 1990
+				Kai Uwe Rommel
+				rommel@lan.informatik.tu-muenchen.dbp.de
+
+
+Verified patchlevel 40.
+Some bugs were fixed. Added alarm() support (using PD implementation).
+
+
+ 				November 1990
+
+                                Kai Uwe Rommel
+                                rommel@lan.informatik.tu-muenchen.dbp.de
+
+
+Verified patchlevel 44.
+Only two #ifdefs added to eval.c. Stack size for A2P had to be corrected.
+PERLGLOB separated from DOS version because of HPFS support.
+
+[Note: instead of #ifdef'ing eval.c I fixed it in perl.h--lwall]
+
+				January 1991
+
+                                Kai Uwe Rommel
+                                  rommel@lan.informatik.tu-muenchen.dbp.de
+
+
+Verified perl 4.0 at patchlevel 10
+Changes:
+- some minor corrections and updates in various files
+- new os2/config.h created from original config.H
+- added support for crypt(), PD routine by A.Tanenbaum in new os2/crypt.c
+- added support for wait4pid() in os2.c
+- fixed/added support for -P option (requires a standard CPP for OS/2)
+- os2/mktemp.c deleted, no longer needed
+- new Makefile created for MS C 6.00 and it's NMAKE
+- with os2/perl.cs, bison has no longer to be called manually
+I have successfully run most tests. Diffs are in os2/tests.dif.
+Often, only command names, shell expansion etc. have to be changed.
+Test that still don't run are Unix-specific ones or fail because
+of CR/LF-problems:
+- io/argv.t, io/inplace.t, op/exec.t, op/glob.t  (minor problems)
+- io/fs.t, io/pipe.t op/fork.t, op/magic.t, op/time.t
+   (under OS/2 not supported features of Unix)
+- op/pat.t (bug, not yet fixed)
+Remember to remove the HAS_GDBM symbol from os2/config.h or
+get GNU gdbm for OS/2.
+
+				June 1991
+                                Kai Uwe Rommel
+                                rommel@lan.informatik.tu-muenchen.dbp.de
+
+
+Verified perl 4.0 at patchlevel 19
+Minor fixes. Previous fixes at PL10 were not included into distribution.
+
+				November 1991
+                                Kai Uwe Rommel
+                                rommel@informatik.tu-muenchen.dbp.de
+
+
+At patchlevel 35, I almost re-did the OS/2 port. I don't use MS C 6.00
+any longer. Instead, because we have the 32-bit OS/2 2.0 now, I use
+the GNU C compiler, ported by Eberhard Mattes (emx 0.8e).
+
+Because the emx C library is good at emulating Unix, much of the code
+in .../os2 can be deleted. It contains now:
+
+total 111
+-rw-a--     1426 Oct 05 00:41 Makefile		main makefile
+-rw-a--      613 Oct 05 00:34 Makefile.a2p	makefile in .../x2p
+-rw-a--     9628 Oct 05 01:16 README.OLD	previous docs
+-rw-a--     6472 Oct 05 01:16 README.OS2	this file
+-rw-a--      370 Jun 12 06:43 alarm.pl		sample
+-rw-a--    27622 Oct 04 23:08 config.h		OS/2 config.h
+-rw-a--      363 Oct 04 23:07 glob.c		for perlglob.exe
+-rw-a--     6321 Oct 05 00:29 os2.c		OS/2 support code
+-rw-a--       74 Jun 12 06:43 perl.def		linker def. file
+-rwxa--      437 Jun 12 06:43 perlsh.cmd	perl shell
+-rwxa--    12535 Jun 12 06:42 s2p.cmd		s2p
+-rwxa--      126 Jun 12 06:43 selfrun.bat	sample
+-rwxa--      134 Jun 12 06:43 selfrun.cmd	sample
+-rw-a--     4193 Oct 04 22:03 suffix.c		OS/2 support code
+-rw-a--    18098 Oct 05 00:58 tests.dif		patches to tests
+-rw-a--    14729 Oct 05 01:17 update.dif	patches to 4.0.35
+
+The programs are built by moving Makefile to .. and Makefile.a2p to
+../x2p/Makefile. Use either dmake or nmake in the main perl directory
+to make the executables.
+
+The resulting executables run under DOS too, for those who are
+interested. They are fully 32-bit programs and require the DOS
+extender emx.exe. Under OS/2, they require emx.dll in the LIBPATH.
+Both are included in the binary distribution.
+
+Two features are new:
+
+- fork is supported because emx emulates fork on OS/2 (but for
+  system(), the spawn function is still used because it is much more
+  efficient)
+
+- un-dumping is supported (similar to what is done with GNU emacs)
+
+To un-dump, i.e. to create a .exe file for a perl script with the
+compiled script preloaded, the following steps are required (example
+with alarm.pl):
+
+- Run perl with -u on the script. This produces a file perldump in the
+  current directory:
+
+	perl -u alarm.pl
+
+- Extract the perl program from your perl.exe into an a.out file named
+  perl:
+
+	emxbind -x perl.exe aperl
+
+- Make a new .exe file and delete aperl and perldump afterwards.
+
+	emxbind -cperldump aperl
+	del perldump aperl
+
+This produces a program called aperl.exe in the current directory.
+You can run this program and it appears as if you had entered "perl
+alarm.pl" on the command line. The emxbind program is included in the
+binary distribution.
+
+Note my new e-mail address. Please don't send large mails to it, I
+have to pay for incoming mail.
+
+				October 1992
+                                Kai Uwe Rommel
+                                rommel@jonas.ucrc.sub.org
+
+
+Verified at patchlevel 36. Minor changes for emx 0.8f instead of 0.8e.
+Added sample os2/dump.cmd for dumping preload programs.
+
+My patches to PL 35 were not included in 36, hopefully they will be in
+the next official patch.
+
+Note that my e-mail address changed again. Please don't send large mails
+to it, I have to pay for incoming mail.
+
+				February 1993
+                                Kai Uwe Rommel
+                                rommel@jonas.gold.sub.org
+
+

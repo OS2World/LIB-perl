@@ -1,0 +1,37 @@
+#
+# Makefile for compiling awk2perl under OS/2
+#
+# Needs emx 0.8e (gcc 2.2.2) or newer
+#
+
+CC	= gcc -O -funsigned-char
+CFLAGS	= -DDEBUGGING
+LDFLAGS	= -s
+LIBS 	= 
+O	= .o
+
+YACC	= bison
+YFLAGS	= 
+
+DEF 	= ../os2/perl.def
+OBJ	= a2p$O hash$O str$O util$O walk$O
+
+.SUFFIXES: .c $O
+
+.c$O:
+	$(CC) -c $(CFLAGS) $<
+
+all: ../a2p.exe
+
+../a2p.exe: $(OBJ)
+	$(CC) $(LDFLAGS) -o $@ $(DEF) $(OBJ) $(LIBS)
+
+a2p.c: 	a2p.y
+	@echo "Expect 231 shift/reduce conflicts..."
+	$(YACC) $(YFLAGS) -o $*.c $*.y
+
+a2p$O: 	a2p.c a2py.c a2p.h EXTERN.h util.h INTERN.h handy.h \
+	../config.h str.h hash.h
+
+clean:
+	rm -f a2p.exe *$O a2p.c
